@@ -1,32 +1,20 @@
-const SWFTE_BASE = 'https://api.swfte.com/agents';
+import { createChatFlowHandler } from '@swfte/chatflow-widget/next';
 
-async function forward(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
-  const { path } = await ctx.params;
-  const url = `${SWFTE_BASE}/${path.join('/')}${new URL(req.url).search}`;
-  const body = ['GET', 'HEAD'].includes(req.method) ? undefined : await req.text();
+/**
+ * Next.js App Router proxy for the ChatFlow widget.
+ *
+ * The widget calls short paths like `/start`, `/input`, `/config`,
+ * `/readiness`, `/session/:id` against its configured `endpoint`. The
+ * SDK's `createChatFlowHandler` knows how to translate those into the
+ * canonical Swfte agents-service v2 routes, attaches the API key, and
+ * synthesises the runtime config. A generic forward proxy will silently
+ * 404 on these short paths.
+ */
+export const { GET, POST } = createChatFlowHandler({
+  apiKey: process.env.SWFTE_API_KEY!,
+  chatFlowId: process.env.NEXT_PUBLIC_CHATFLOW_ID!,
+  workspaceId: process.env.SWFTE_WORKSPACE_ID,
+  channel: 'WEB_CHAT',
+});
 
-  const r = await fetch(url, {
-    method: req.method,
-    headers: {
-      Authorization: `Bearer ${process.env.SWFTE_API_KEY}`,
-      'X-API-Key': process.env.SWFTE_API_KEY!,
-      'X-Workspace-ID': process.env.SWFTE_WORKSPACE_ID ?? '',
-      'Content-Type': req.headers.get('content-type') ?? 'application/json',
-    },
-    body,
-  });
-
-  return new Response(r.body, {
-    status: r.status,
-    headers: {
-      'Content-Type': r.headers.get('content-type') ?? 'application/json',
-    },
-  });
-}
-
-export const GET = forward;
-export const POST = forward;
-export const PUT = forward;
-export const PATCH = forward;
-export const DELETE = forward;
 export const dynamic = 'force-dynamic';
