@@ -24,10 +24,9 @@ Classify, summarise, and route inbound support tickets with a ChatFlow before a 
 ```tsx
 <ChatFlowProvider
   config={{
-    baseUrl: '/api/chatflow',
+    endpoint: '/api/chatflow',
     chatFlowId: process.env.NEXT_PUBLIC_SUPPORT_TRIAGE_ID!,
     apiKey: '',
-    proxyUrl: '/api/chatflow',
     sessionVariables: { customerId, plan, region },
     greeting: "Hi! Tell me what's going wrong.",
     onComplete: async (data) => {

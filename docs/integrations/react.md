@@ -17,7 +17,7 @@ export function App() {
   return (
     <ChatFlowProvider
       config={{
-        baseUrl: 'https://api.swfte.com/agents',
+        endpoint: 'https://api.swfte.com/agents',
         chatFlowId: 'cf_yourchatflowid',
         apiKey: process.env.NEXT_PUBLIC_SWFTE_API_KEY,
         workspaceId: '226',

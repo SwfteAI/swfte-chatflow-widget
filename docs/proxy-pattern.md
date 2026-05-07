@@ -86,8 +86,7 @@ export default {
 ```tsx
 <ChatFlowProvider
   config={{
-    baseUrl: '/api/chatflow',
-    proxyUrl: '/api/chatflow',
+    endpoint: '/api/chatflow',
     apiKey: '', // not used when proxy handles auth
     chatFlowId: 'cf_yourchatflowid',
   }}

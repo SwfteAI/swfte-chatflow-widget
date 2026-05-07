@@ -15,9 +15,8 @@ The same ChatFlow that powers your web onboarding can answer an inbound phone ca
 // Web mount — exact same widget
 <ChatFlowProvider
   config={{
-    baseUrl: '/api/chatflow',
+    endpoint: '/api/chatflow',
     chatFlowId: process.env.NEXT_PUBLIC_ONBOARDING_ID!,
-    proxyUrl: '/api/chatflow',
     apiKey: '',
   }}
 >

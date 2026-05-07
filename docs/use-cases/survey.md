@@ -32,10 +32,9 @@ return show && (
   <Modal onClose={() => setShow(false)}>
     <ChatFlowProvider
       config={{
-        baseUrl: '/api/chatflow',
+        endpoint: '/api/chatflow',
         chatFlowId: process.env.NEXT_PUBLIC_NPS_ID!,
         apiKey: '',
-        proxyUrl: '/api/chatflow',
         sessionVariables: { userId, signupDate, lifetimeValue },
         onComplete: async (data) => {
           await fetch('/api/nps', { method: 'POST', body: JSON.stringify(data) });

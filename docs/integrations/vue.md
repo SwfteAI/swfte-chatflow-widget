@@ -10,7 +10,7 @@ import { ChatFlowClient } from '@swfte/chatflow-widget';
 import { onMounted, onBeforeUnmount, reactive } from 'vue';
 
 const client = new ChatFlowClient({
-  baseUrl: 'https://api.swfte.com/agents',
+  endpoint: 'https://api.swfte.com/agents',
   chatFlowId: import.meta.env.VITE_CHATFLOW_ID,
   apiKey: import.meta.env.VITE_SWFTE_API_KEY,
   workspaceId: import.meta.env.VITE_SWFTE_WORKSPACE_ID,
@@ -53,6 +53,6 @@ async function send() {
 
 ## Nuxt 3
 
-Same component; ensure the proxy lives in `server/api/chatflow/[...path].ts` so the API key never reaches the browser. Set `baseUrl: '/api/chatflow'` in the client.
+Same component; ensure the proxy lives in `server/api/chatflow/[...path].ts` so the API key never reaches the browser. Set `endpoint: '/api/chatflow'` in the client.
 
 Full reference at [swfte.com/developers](https://www.swfte.com/developers).

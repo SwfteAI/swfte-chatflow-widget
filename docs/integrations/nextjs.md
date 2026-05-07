@@ -42,10 +42,9 @@ export default function OnboardingPage() {
   return (
     <ChatFlowProvider
       config={{
-        baseUrl: '/api/chatflow',
+        endpoint: '/api/chatflow',
         chatFlowId: process.env.NEXT_PUBLIC_CHATFLOW_ID!,
         apiKey: '',
-        proxyUrl: '/api/chatflow',
         greeting: "Hey! Let's get you set up.",
         onComplete: (data) => fetch('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
       }}
