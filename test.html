@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatFlow Widget Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #18181b;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #e4e4e7;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header .badge {
+      background: #dbeafe; color: #2563eb;
+      font-size: 11px; font-weight: 600;
+      padding: 4px 10px; border-radius: 99px;
+    }
+    .main { flex: 1; display: flex; max-width: 1400px; width: 100%; margin: 0 auto; padding: 24px; gap: 16px; }
+    .chat-panel { flex: 1; min-width: 0; height: calc(100vh - 100px); }
+    .sidebar { width: 300px; display: flex; flex-direction: column; gap: 12px; }
+    .debug-panel { width: 380px; display: flex; flex-direction: column; gap: 12px; }
+    .card {
+      background: #fff; border: 1px solid #e4e4e7;
+      border-radius: 12px; padding: 16px;
+    }
+    .card h3 { font-size: 13px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .field-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; }
+    .field-row .label { color: #71717a; }
+    .field-row .value { font-weight: 500; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .field-row .empty { color: #d4d4d8; font-style: italic; }
+    .config-form label { display: block; font-size: 12px; color: #71717a; margin-bottom: 4px; margin-top: 10px; }
+    .config-form input, .config-form textarea, .config-form select {
+      width: 100%; padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 8px;
+      font-size: 13px; font-family: inherit; outline: none;
+    }
+    .config-form input:focus, .config-form textarea:focus { border-color: #3b82f6; }
+    .config-form textarea { resize: vertical; min-height: 60px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: 8px; border: none;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #f4f4f5; color: #18181b; }
+    .btn-secondary:hover { background: #e4e4e7; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .progress-bar { height: 6px; background: #e4e4e7; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: #3b82f6; border-radius: 3px; transition: width 0.4s ease-out; }
+    .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+    .status .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-active { background: #22c55e; }
+    .dot-loading { background: #f59e0b; }
+    .dot-idle { background: #d4d4d8; }
+    .dot-completed { background: #3b82f6; }
+    .dot-error { background: #ef4444; }
+
+    /* Debug log */
+    .debug-log {
+      flex: 1; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px; line-height: 1.6; padding: 8px; background: #1e1e2e; color: #cdd6f4;
+      border-radius: 8px; max-height: 400px;
+    }
+    .debug-log .log-entry { padding: 3px 0; border-bottom: 1px solid #313244; }
+    .debug-log .log-ts { color: #6c7086; }
+    .debug-log .log-req { color: #89b4fa; }
+    .debug-log .log-res { color: #a6e3a1; }
+    .debug-log .log-err { color: #f38ba8; }
+    .debug-log .log-info { color: #f9e2af; }
+
+    /* Test results */
+    .test-result { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin: 2px 0; }
+    .test-pass { background: #dcfce7; color: #166534; }
+    .test-fail { background: #fef2f2; color: #991b1b; }
+    .test-running { background: #fef3c7; color: #92400e; }
+
+    /* ChatFlow widget styles */
+    .cfw-container {
+      display: flex; flex-direction: column; height: 100%;
+      background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; overflow: hidden;
+    }
+    .cfw-header {
+      padding: 12px 16px; border-bottom: 1px solid #e4e4e7;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .cfw-avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: #dbeafe;
+      display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 14px;
+    }
+    .cfw-name { font-weight: 600; font-size: 14px; }
+    .cfw-subtitle { font-size: 12px; color: #71717a; }
+    .cfw-messages {
+      flex: 1; overflow-y: auto; padding: 16px; display: flex;
+      flex-direction: column; gap: 10px;
+    }
+    .cfw-msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+    .cfw-msg-user { background: #3b82f6; color: #fff; border-bottom-right-radius: 4px; margin-left: auto; }
+    .cfw-msg-agent { background: #f4f4f5; color: #18181b; border-bottom-left-radius: 4px; margin-right: auto; }
+    .cfw-typing { display: flex; gap: 5px; align-items: center; padding: 12px 16px; background: #f4f4f5; border-radius: 16px; border-bottom-left-radius: 4px; margin-right: auto; }
+    .cfw-typing span { width: 7px; height: 7px; border-radius: 50%; background: #a1a1aa; display: inline-block; animation: cfw-bounce 1.2s ease-in-out infinite; }
+    .cfw-typing span:nth-child(2) { animation-delay: 0.15s; }
+    .cfw-typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes cfw-bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+    .cfw-input-bar {
+      padding: 10px 12px; border-top: 1px solid #e4e4e7;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .cfw-input {
+      flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid #e4e4e7;
+      background: #f4f4f5; font-size: 14px; font-family: inherit; outline: none;
+    }
+    .cfw-input:focus { border-color: #3b82f6; }
+    .cfw-send {
+      width: 40px; height: 40px; border-radius: 10px; border: none;
+      background: #3b82f6; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cfw-send:disabled { background: #e4e4e7; color: #a1a1aa; cursor: default; }
+    .cfw-error { padding: 8px 12px; background: #fef2f2; color: #ef4444; border-radius: 8px; font-size: 12px; }
+    .cfw-complete { text-align: center; padding: 16px; color: #22c55e; font-size: 13px; font-weight: 500; }
+
+    @media (max-width: 1200px) {
+      .main { flex-direction: column; }
+      .sidebar, .debug-panel { width: 100%; }
+      .chat-panel { height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>ChatFlow Widget — Test Harness</h1>
+    <span class="badge">@swfte/chatflow-widget v2</span>
+  </div>
+
+  <div class="main">
+    <!-- Chat panel -->
+    <div class="chat-panel" id="chatPanel">
+      <!-- Config form (shown before start) -->
+      <div class="card" id="configCard">
+        <h3>Configuration</h3>
+        <div class="config-form">
+          <label>Environment</label>
+          <select id="cfgEnv" onchange="applyPreset()">
+            <option value="">Custom</option>
+            <option value="local">Local (localhost:8307)</option>
+            <option value="staging">Staging</option>
+            <option value="production">Production</option>
+          </select>
+
+          <label>API Base URL</label>
+          <input id="cfgBaseUrl" value="https://api.swfte.com/agents" />
+
+          <label>ChatFlow ID</label>
+          <input id="cfgChatFlowId" placeholder="e.g. 52f84333-59c6-4f04-9a02-3c5e3d91961d" />
+
+          <label>API Key</label>
+          <input id="cfgApiKey" type="password" placeholder="sk-swfte-..." />
+
+          <label>Workspace ID</label>
+          <input id="cfgWorkspaceId" placeholder="e.g. 226" />
+
+          <label>Agent Name</label>
+          <input id="cfgAgentName" value="Zara" />
+
+          <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="startChat()">Start ChatFlow</button>
+            <button class="btn btn-secondary" onclick="loadFromEnv()">Load Workzil</button>
+            <button class="btn btn-success" onclick="runAutoTests()" title="Run automated test sequences">Run Tests</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat widget (shown after start) -->
+      <div class="cfw-container" id="chatWidget" style="display: none;">
+        <div class="cfw-header">
+          <div class="cfw-avatar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <div class="cfw-name" id="headerName">Zara</div>
+            <div class="cfw-subtitle" id="headerSubtitle">Onboarding</div>
+          </div>
+        </div>
+        <div class="cfw-messages" id="messagesArea"></div>
+        <div class="cfw-input-bar" id="inputBar">
+          <input class="cfw-input" id="msgInput" placeholder="Type your response..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg()}" />
+          <button class="cfw-send" id="sendBtn" onclick="sendMsg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Status -->
+      <div class="card">
+        <h3>Session</h3>
+        <div class="field-row"><span class="label">Status</span><span id="statusBadge" class="status"><span class="dot dot-idle"></span> Idle</span></div>
+        <div class="field-row"><span class="label">Session ID</span><span id="sessionIdDisplay" class="value empty">-</span></div>
+        <div class="field-row"><span class="label">Current Field</span><span id="currentFieldDisplay" class="value empty">-</span></div>
+        <div class="field-row"><span class="label">Progress</span><span id="progressDisplay" class="value">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressBar" style="width: 0%"></div></div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-secondary" onclick="resetChat()" style="width: 100%;">Reset</button>
+        </div>
+      </div>
+
+      <!-- Collected Data -->
+      <div class="card" style="flex: 1; overflow-y: auto;">
+        <h3>Collected Data</h3>
+        <div id="collectedDataDisplay">
+          <div class="field-row"><span class="empty">No data yet</span></div>
+        </div>
+      </div>
+
+      <!-- Last Turn Diagnostics -->
+      <div class="card">
+        <h3>Last Turn</h3>
+        <div id="lastTurnDisplay">
+          <div class="field-row"><span class="empty">No turns yet</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel">
+      <div class="card" style="display: flex; flex-direction: column; flex: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3 style="margin-bottom: 0;">Debug Log</h3>
+          <button class="btn btn-sm btn-secondary" onclick="clearDebugLog()">Clear</button>
+        </div>
+        <div class="debug-log" id="debugLog"></div>
+      </div>
+
+      <!-- Test Results -->
+      <div class="card" id="testResultsCard" style="display: none;">
+        <h3>Test Results</h3>
+        <div id="testResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      sessionId: null,
+      status: 'idle',
+      messages: [],
+      collectedData: {},
+      currentFieldId: null,
+      progressPercent: 0,
+      isSending: false,
+      config: null,
+      turnCount: 0,
+    };
+
+    // ── Debug Logger ───────────────────────────────────────────
+    function debugLog(type, message, data) {
+      const log = document.getElementById('debugLog');
+      const ts = new Date().toISOString().slice(11, 23);
+      const cls = { req: 'log-req', res: 'log-res', err: 'log-err', info: 'log-info' }[type] || '';
+      const dataStr = data ? '\n' + (typeof data === 'string' ? data : JSON.stringify(data, null, 2)) : '';
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-ts">${ts}</span> <span class="${cls}">${message}</span>${dataStr ? `<pre style="margin:2px 0 0 0;font-size:10px;color:#7f849c;white-space:pre-wrap;word-break:break-all;">${escHtml(dataStr.trim())}</pre>` : ''}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function clearDebugLog() {
+      document.getElementById('debugLog').innerHTML = '';
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Config ─────────────────────────────────────────────────
+    function getConfig() {
+      return {
+        baseUrl: document.getElementById('cfgBaseUrl').value.replace(/\/+$/, ''),
+        chatFlowId: document.getElementById('cfgChatFlowId').value.trim(),
+        apiKey: document.getElementById('cfgApiKey').value.trim(),
+        workspaceId: document.getElementById('cfgWorkspaceId').value.trim(),
+        agentName: document.getElementById('cfgAgentName').value.trim(),
+      };
+    }
+
+    function apiHeaders(config) {
+      const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` };
+      if (config.workspaceId) h['X-Workspace-Id'] = config.workspaceId;
+      return h;
+    }
+
+    function applyPreset() {
+      const presets = {
+        local: { url: 'http://localhost:8307', id: '52f84333-59c6-4f04-9a02-3c5e3d91961d', ws: '226' },
+        staging: { url: 'https://staging-api.swfte.com/agents', id: '', ws: '' },
+        production: { url: 'https://api.swfte.com/agents', id: '52f84333-59c6-4f04-9a02-3c5e3d91961d', ws: '226' },
+      };
+      const p = presets[document.getElementById('cfgEnv').value];
+      if (p) {
+        document.getElementById('cfgBaseUrl').value = p.url;
+        if (p.id) document.getElementById('cfgChatFlowId').value = p.id;
+        if (p.ws) document.getElementById('cfgWorkspaceId').value = p.ws;
+      }
+    }
+
+    function loadFromEnv() {
+      document.getElementById('cfgChatFlowId').value = '52f84333-59c6-4f04-9a02-3c5e3d91961d';
+      document.getElementById('cfgWorkspaceId').value = '226';
+    }
+
+    // ── API Wrapper ────────────────────────────────────────────
+    async function apiFetch(method, url, body) {
+      const redactedHeaders = { ...apiHeaders(state.config) };
+      if (redactedHeaders.Authorization) {
+        redactedHeaders.Authorization = redactedHeaders.Authorization.slice(0, 15) + '...';
+      }
+      debugLog('req', `${method} ${url}`, { headers: redactedHeaders, body });
+
+      const t0 = performance.now();
+      const opts = { method, headers: apiHeaders(state.config) };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(url, opts);
+      const elapsed = Math.round(performance.now() - t0);
+      const text = await res.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+
+      if (res.ok) {
+        debugLog('res', `${res.status} OK (${elapsed}ms)`, json || text);
+      } else {
+        debugLog('err', `${res.status} FAILED (${elapsed}ms)`, text.slice(0, 500));
+      }
+
+      return { ok: res.ok, status: res.status, json, text };
+    }
+
+    // ── Session Start ──────────────────────────────────────────
+    async function startChat() {
+      const config = getConfig();
+      if (!config.chatFlowId || !config.apiKey) {
+        alert('ChatFlow ID and API Key are required');
+        return;
+      }
+      state.config = config;
+      updateStatus('loading');
+      debugLog('info', 'Creating session...');
+
+      try {
+        // 1. Create session
+        const createRes = await apiFetch('POST',
+          `${config.baseUrl}/v2/chatflows/${config.chatFlowId}/sessions`,
+          { channel: 'WEB_CHAT', language: 'en-US' });
+
+        if (!createRes.ok) throw new Error(`Create session: ${createRes.status} ${createRes.text}`);
+
+        state.sessionId = createRes.json.sessionId;
+        document.getElementById('sessionIdDisplay').textContent = state.sessionId.slice(0, 16) + '...';
+        document.getElementById('sessionIdDisplay').title = state.sessionId;
+
+        // Show widget, hide config
+        document.getElementById('configCard').style.display = 'none';
+        document.getElementById('chatWidget').style.display = 'flex';
+        document.getElementById('headerName').textContent = config.agentName || 'Assistant';
+
+        // 2. Send SESSION_START to get engine's opening greeting (matches SDK behavior)
+        debugLog('info', 'Sending SESSION_START...');
+        const startRes = await apiFetch('POST',
+          `${config.baseUrl}/v2/chatflows/sessions/${state.sessionId}/input`,
+          { input: '', inputType: 'SESSION_START' });
+
+        if (startRes.ok && startRes.json && startRes.json.message) {
+          addMessage('assistant', startRes.json.message);
+          if (startRes.json.currentFieldId) {
+            state.currentFieldId = startRes.json.currentFieldId;
+            document.getElementById('currentFieldDisplay').textContent = startRes.json.currentFieldId;
+            document.getElementById('currentFieldDisplay').classList.remove('empty');
+          }
+        } else {
+          debugLog('err', 'SESSION_START failed, using fallback greeting');
+          addMessage('assistant', 'Hello! How can I help you?');
+        }
+
+        updateStatus('active');
+        document.getElementById('msgInput').focus();
+      } catch (err) {
+        updateStatus('error');
+        debugLog('err', 'Start failed: ' + err.message);
+        alert('Failed to start: ' + err.message);
+      }
+    }
+
+    // ── Send Message ───────────────────────────────────────────
+    async function sendMsg() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text || state.isSending || !state.sessionId) return;
+
+      input.value = '';
+      state.isSending = true;
+      state.turnCount++;
+      document.getElementById('sendBtn').disabled = true;
+      addMessage('user', text);
+      showTyping(true);
+
+      const prevFieldId = state.currentFieldId;
+
+      try {
+        const res = await apiFetch('POST',
+          `${state.config.baseUrl}/v2/chatflows/sessions/${state.sessionId}/input`,
+          { input: text, inputType: 'TEXT' });
+
+        showTyping(false);
+
+        if (!res.ok) throw new Error(`${res.status}: ${res.text}`);
+        const data = res.json;
+
+        if (data.message) addMessage('assistant', data.message);
+
+        // Update last turn diagnostics
+        const fieldChanged = data.currentFieldId && data.currentFieldId !== prevFieldId;
+        const hasExtracted = data.extractedData && Object.keys(data.extractedData).length > 0;
+        updateLastTurn({
+          turn: state.turnCount,
+          input: text,
+          fieldBefore: prevFieldId,
+          fieldAfter: data.currentFieldId,
+          fieldChanged,
+          extracted: hasExtracted,
+          extractedData: data.extractedData,
+          message: data.message ? data.message.slice(0, 80) : '',
+          type: hasExtracted ? 'extracted' : (fieldChanged ? 'advanced' : 'clarification'),
+        });
+
+        if (data.currentFieldId) {
+          state.currentFieldId = data.currentFieldId;
+          document.getElementById('currentFieldDisplay').textContent = data.currentFieldId;
+          document.getElementById('currentFieldDisplay').classList.remove('empty');
+        }
+
+        // Fetch session state for collected data
+        await syncSession();
+
+        if (data.sessionComplete) {
+          updateStatus('completed');
+          document.getElementById('inputBar').style.display = 'none';
+          const el = document.createElement('div');
+          el.className = 'cfw-complete';
+          el.textContent = 'Conversation complete';
+          document.getElementById('messagesArea').appendChild(el);
+        }
+
+        return data;
+      } catch (err) {
+        showTyping(false);
+        const el = document.createElement('div');
+        el.className = 'cfw-error';
+        el.textContent = 'Error: ' + err.message;
+        document.getElementById('messagesArea').appendChild(el);
+        debugLog('err', err.message);
+        return null;
+      } finally {
+        state.isSending = false;
+        document.getElementById('sendBtn').disabled = false;
+        input.focus();
+      }
+    }
+
+    // ── Send programmatically (for tests) ──────────────────────
+    async function sendText(text) {
+      document.getElementById('msgInput').value = text;
+      return sendMsg();
+    }
+
+    // ── Sync Session ───────────────────────────────────────────
+    async function syncSession() {
+      if (!state.sessionId) return;
+      try {
+        const res = await apiFetch('GET',
+          `${state.config.baseUrl}/v2/chatflows/sessions/${state.sessionId}`);
+        if (!res.ok) return;
+        const data = res.json;
+
+        if (data.collectedData) {
+          state.collectedData = {};
+          for (const [key, val] of Object.entries(data.collectedData)) {
+            state.collectedData[key] = (typeof val === 'object' && val !== null && 'value' in val)
+              ? val.value : val;
+          }
+          renderCollectedData();
+        }
+
+        // Progress
+        const fields = Object.keys(data.collectedData || {}).length;
+        const total = data.totalFields || 16;
+        state.progressPercent = Math.round((fields / total) * 100);
+        document.getElementById('progressDisplay').textContent = state.progressPercent + '%';
+        document.getElementById('progressBar').style.width = state.progressPercent + '%';
+      } catch { /* ignore */ }
+    }
+
+    // ── Last Turn Diagnostics ──────────────────────────────────
+    function updateLastTurn(info) {
+      const container = document.getElementById('lastTurnDisplay');
+      const typeColors = { extracted: '#22c55e', advanced: '#3b82f6', clarification: '#f59e0b' };
+      container.innerHTML = `
+        <div class="field-row"><span class="label">Turn</span><span class="value">#${info.turn}</span></div>
+        <div class="field-row"><span class="label">Input</span><span class="value" title="${escHtml(info.input)}">${escHtml(info.input.slice(0,30))}</span></div>
+        <div class="field-row"><span class="label">Result</span><span class="value" style="color:${typeColors[info.type]||'#71717a'}">${info.type.toUpperCase()}</span></div>
+        <div class="field-row"><span class="label">Field</span><span class="value">${info.fieldAfter || '-'}</span></div>
+        ${info.extracted ? `<div class="field-row"><span class="label">Data</span><span class="value" title="${escHtml(JSON.stringify(info.extractedData))}">${escHtml(JSON.stringify(info.extractedData).slice(0,30))}</span></div>` : ''}
+      `;
+    }
+
+    // ── UI Helpers ──────────────────────────────────────────────
+    function addMessage(role, content) {
+      state.messages.push({ role, content, timestamp: Date.now() });
+      const area = document.getElementById('messagesArea');
+      const el = document.createElement('div');
+      el.className = `cfw-msg cfw-msg-${role === 'assistant' ? 'agent' : role}`;
+      el.textContent = content;
+      area.appendChild(el);
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function showTyping(show) {
+      let el = document.getElementById('typingIndicator');
+      if (show && !el) {
+        el = document.createElement('div');
+        el.id = 'typingIndicator';
+        el.className = 'cfw-typing';
+        el.innerHTML = '<span></span><span></span><span></span>';
+        document.getElementById('messagesArea').appendChild(el);
+        document.getElementById('messagesArea').scrollTop = document.getElementById('messagesArea').scrollHeight;
+      } else if (!show && el) {
+        el.remove();
+      }
+    }
+
+    function updateStatus(status) {
+      state.status = status;
+      const badge = document.getElementById('statusBadge');
+      const dotClass = { idle: 'dot-idle', loading: 'dot-loading', active: 'dot-active', completed: 'dot-completed', error: 'dot-error' };
+      const labels = { idle: 'Idle', loading: 'Loading...', active: 'Active', completed: 'Completed', error: 'Error' };
+      badge.innerHTML = `<span class="dot ${dotClass[status] || 'dot-idle'}"></span> ${labels[status] || status}`;
+    }
+
+    function renderCollectedData() {
+      const container = document.getElementById('collectedDataDisplay');
+      const entries = Object.entries(state.collectedData);
+      if (entries.length === 0) {
+        container.innerHTML = '<div class="field-row"><span class="empty">No data yet</span></div>';
+        return;
+      }
+      container.innerHTML = entries.map(([key, val]) => {
+        const display = Array.isArray(val) ? val.join(', ') : typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return `<div class="field-row"><span class="label">${escHtml(key)}</span><span class="value" title="${escHtml(display)}">${escHtml(display)}</span></div>`;
+      }).join('');
+    }
+
+    function resetChat() {
+      state = { sessionId: null, status: 'idle', messages: [], collectedData: {}, currentFieldId: null, progressPercent: 0, isSending: false, config: null, turnCount: 0 };
+      document.getElementById('configCard').style.display = 'block';
+      document.getElementById('chatWidget').style.display = 'none';
+      document.getElementById('messagesArea').innerHTML = '';
+      document.getElementById('inputBar').style.display = 'flex';
+      document.getElementById('sessionIdDisplay').textContent = '-';
+      document.getElementById('sessionIdDisplay').classList.add('empty');
+      document.getElementById('currentFieldDisplay').textContent = '-';
+      document.getElementById('currentFieldDisplay').classList.add('empty');
+      document.getElementById('progressDisplay').textContent = '0%';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('lastTurnDisplay').innerHTML = '<div class="field-row"><span class="empty">No turns yet</span></div>';
+      document.getElementById('testResultsCard').style.display = 'none';
+      updateStatus('idle');
+      renderCollectedData();
+      debugLog('info', 'Session reset');
+    }
+
+    // ── Automated Tests ────────────────────────────────────────
+    const TEST_SEQUENCES = [
+      {
+        name: 'Happy Path - Name',
+        input: 'John Smith',
+        expect: { extracted: true, noClrification: true },
+      },
+      {
+        name: 'Edge - Single Char',
+        input: 'J',
+        expect: { clarification: true },
+      },
+      {
+        name: 'Edge - Punctuation Only',
+        input: '!!!',
+        expect: { clarification: true },
+      },
+      {
+        name: 'Edge - Meta Question',
+        input: 'Why do you need my name?',
+        expect: { clarification: true },
+      },
+      {
+        name: 'Happy Path - Name Retry',
+        input: 'Jane Doe',
+        expect: { extracted: true },
+      },
+    ];
+
+    async function runAutoTests() {
+      const config = getConfig();
+      if (!config.chatFlowId || !config.apiKey) {
+        alert('Configure ChatFlow ID and API Key first');
+        return;
+      }
+
+      const resultsCard = document.getElementById('testResultsCard');
+      const resultsDiv = document.getElementById('testResults');
+      resultsCard.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="test-running">Starting tests...</div>';
+      debugLog('info', '=== AUTOMATED TESTS STARTING ===');
+
+      // Start fresh session
+      if (state.sessionId) resetChat();
+      state.config = config;
+      document.getElementById('configCard').style.display = 'none';
+      document.getElementById('chatWidget').style.display = 'flex';
+      document.getElementById('headerName').textContent = config.agentName || 'Test Agent';
+      updateStatus('loading');
+
+      try {
+        // Create session
+        const createRes = await apiFetch('POST',
+          `${config.baseUrl}/v2/chatflows/${config.chatFlowId}/sessions`,
+          { channel: 'WEB_CHAT', language: 'en-US' });
+        if (!createRes.ok) throw new Error('Session creation failed');
+        state.sessionId = createRes.json.sessionId;
+        document.getElementById('sessionIdDisplay').textContent = state.sessionId.slice(0, 16) + '...';
+
+        // SESSION_START
+        const startRes = await apiFetch('POST',
+          `${config.baseUrl}/v2/chatflows/sessions/${state.sessionId}/input`,
+          { input: '', inputType: 'SESSION_START' });
+        if (startRes.ok && startRes.json.message) {
+          addMessage('assistant', startRes.json.message);
+        }
+        updateStatus('active');
+
+        // Run test sequence
+        let results = [];
+        for (const test of TEST_SEQUENCES) {
+          debugLog('info', `--- Test: ${test.name} ---`);
+          resultsDiv.innerHTML += `<div class="test-running">Running: ${test.name}...</div>`;
+
+          await new Promise(r => setTimeout(r, 500)); // pacing
+          const data = await sendText(test.input);
+
+          let passed = true;
+          let reason = '';
+
+          if (!data) {
+            passed = false;
+            reason = 'No response received';
+          } else if (test.expect.extracted) {
+            const hasExtracted = data.extractedData && Object.keys(data.extractedData).length > 0;
+            if (!hasExtracted) {
+              passed = false;
+              reason = `Expected extraction but got: "${(data.message || '').slice(0, 60)}"`;
+            }
+          } else if (test.expect.clarification) {
+            const hasExtracted = data.extractedData && Object.keys(data.extractedData).length > 0;
+            if (hasExtracted) {
+              passed = false;
+              reason = `Expected clarification but got extraction: ${JSON.stringify(data.extractedData)}`;
+            }
+          }
+
+          results.push({ name: test.name, passed, reason, input: test.input });
+          debugLog(passed ? 'res' : 'err', `${test.name}: ${passed ? 'PASS' : 'FAIL'} ${reason}`);
+        }
+
+        // Render results
+        const passCount = results.filter(r => r.passed).length;
+        resultsDiv.innerHTML = `<div style="margin-bottom:8px;font-weight:600;font-size:13px;">${passCount}/${results.length} passed</div>` +
+          results.map(r => `<div class="test-result ${r.passed ? 'test-pass' : 'test-fail'}">${r.passed ? 'PASS' : 'FAIL'} ${escHtml(r.name)}${r.reason ? ` - ${escHtml(r.reason)}` : ''}</div>`).join('');
+
+        debugLog('info', `=== TESTS COMPLETE: ${passCount}/${results.length} passed ===`);
+      } catch (err) {
+        resultsDiv.innerHTML = `<div class="test-fail">Tests failed: ${escHtml(err.message)}</div>`;
+        debugLog('err', 'Tests failed: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
