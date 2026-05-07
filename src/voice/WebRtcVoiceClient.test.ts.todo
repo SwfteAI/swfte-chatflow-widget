@@ -1,0 +1,112 @@
+/**
+ * TODO: Unit tests for WebRtcVoiceClient.
+ *
+ * This file is .todo because the SDK does not yet have a test runner
+ * configured (no vitest / jest / mocha in package.json). Adding one was
+ * deemed out-of-scope for the V2 wiring ticket — file was created so the
+ * test cases aren't forgotten.
+ *
+ * To activate:
+ *   1. Add vitest as a devDep: `npm i -D vitest @vitest/ui happy-dom`
+ *   2. Add "test": "vitest run" to package.json scripts
+ *   3. Create a vitest.config.ts with environment: 'happy-dom'
+ *   4. Rename this file to WebRtcVoiceClient.test.ts
+ *   5. Uncomment the scaffold below.
+ *
+ * Test cases to cover (each maps to a known fragile bit of WebRtcVoiceClient):
+ *
+ *   A. start() calls WHIP endpoint with the right URL, method, headers, body.
+ *      - Mock fetch: expects Content-Type: application/sdp, Authorization
+ *        with apiKey, and ?chatFlowId=&workspaceId= in the URL.
+ *   B. start() rejects with WebRtcConnectError(reason='whip_4xx') on HTTP 404.
+ *   C. start() rejects with WebRtcConnectError(reason='whip_5xx') on HTTP 503.
+ *   D. start() rejects with WebRtcConnectError(reason='ice_timeout') when
+ *      the PC never transitions to 'connected' within iceTimeoutMs.
+ *   E. start() rejects with WebRtcConnectError(reason='sdp_rejected') when
+ *      setRemoteDescription throws.
+ *   F. start() emits { type:'connection', state:'connecting' } first, then
+ *      'open' once ICE is connected.
+ *   G. Control channel 'transcript' frames are forwarded as VoiceEvent.
+ *   H. stop() sends DELETE to /v2/voice/whip/sessions/{id} and closes PC.
+ *
+ * Sketch (uncomment + adjust once vitest is installed):
+ *
+ * // import { describe, it, expect, vi, beforeEach } from 'vitest';
+ * // import { WebRtcVoiceClient, WebRtcConnectError } from './WebRtcVoiceClient';
+ * //
+ * // class FakePc {
+ * //   iceConnectionState: RTCIceConnectionState = 'new';
+ * //   localDescription: RTCSessionDescriptionInit | null = null;
+ * //   private listeners = new Map<string, Set<EventListener>>();
+ * //   ontrack: ((ev: any) => void) | null = null;
+ * //   oniceconnectionstatechange: (() => void) | null = null;
+ * //   addTrack = vi.fn();
+ * //   addTransceiver = vi.fn();
+ * //   createDataChannel = vi.fn(() => ({ onmessage: null, close: vi.fn() }));
+ * //   createOffer = vi.fn(async () => ({ type: 'offer', sdp: 'v=0\r\n' } as RTCSessionDescriptionInit));
+ * //   setLocalDescription = vi.fn(async (d: RTCSessionDescriptionInit) => { this.localDescription = d; });
+ * //   setRemoteDescription = vi.fn(async () => undefined);
+ * //   close = vi.fn();
+ * //   getStats = vi.fn(async () => new Map());
+ * //   addEventListener(ev: string, fn: EventListener) {
+ * //     if (!this.listeners.has(ev)) this.listeners.set(ev, new Set());
+ * //     this.listeners.get(ev)!.add(fn);
+ * //   }
+ * //   removeEventListener(ev: string, fn: EventListener) {
+ * //     this.listeners.get(ev)?.delete(fn);
+ * //   }
+ * //   _fireIceState(s: RTCIceConnectionState) {
+ * //     this.iceConnectionState = s;
+ * //     this.listeners.get('iceconnectionstatechange')?.forEach(fn => fn(new Event('iceconnectionstatechange')));
+ * //     this.oniceconnectionstatechange?.();
+ * //   }
+ * // }
+ * //
+ * // beforeEach(() => {
+ * //   (globalThis as any).RTCPeerConnection = FakePc;
+ * //   (globalThis as any).navigator = {
+ * //     mediaDevices: {
+ * //       getUserMedia: vi.fn(async () => ({ getAudioTracks: () => [{ id: 't' }], getTracks: () => [{ stop: vi.fn() }] })),
+ * //     },
+ * //   };
+ * //   (globalThis as any).performance = { now: () => 0 };
+ * // });
+ * //
+ * // describe('WebRtcVoiceClient', () => {
+ * //   it('POSTs WHIP offer with expected URL + body + headers', async () => {
+ * //     const fetchMock = vi.fn(async () => new Response('v=0\r\n', { status: 200 }));
+ * //     (globalThis as any).fetch = fetchMock;
+ * //     const c = new WebRtcVoiceClient({
+ * //       whipEndpoint: 'https://api.example.com/agents',
+ * //       chatFlowId: 'cf1', workspaceId: 'ws1', sessionId: 's1', apiKey: 'secret',
+ * //       iceTimeoutMs: 50, onEvent: () => {},
+ * //     });
+ * //     const audioEl = { srcObject: null, autoplay: false, playsInline: false, play: async () => {} } as any;
+ * //     // Race: fire ice=connected asap so start() resolves.
+ * //     queueMicrotask(() => {
+ * //       const pc = (c as any).pc as FakePc;
+ * //       pc._fireIceState('connected');
+ * //     });
+ * //     await c.start(audioEl);
+ * //     const [url, init] = fetchMock.mock.calls[0];
+ * //     expect(url).toBe('https://api.example.com/agents/v2/voice/whip/offer?chatFlowId=cf1&workspaceId=ws1');
+ * //     expect(init.headers['Content-Type']).toBe('application/sdp');
+ * //     expect(init.headers['X-Session-Id']).toBe('s1');
+ * //     expect(init.headers['Authorization']).toBe('Bearer secret');
+ * //     expect(init.body).toBe('v=0\r\n');
+ * //   });
+ * //
+ * //   it('throws WebRtcConnectError("ice_timeout") after iceTimeoutMs', async () => {
+ * //     (globalThis as any).fetch = vi.fn(async () => new Response('v=0\r\n', { status: 200 }));
+ * //     const c = new WebRtcVoiceClient({
+ * //       whipEndpoint: 'https://x', chatFlowId: 'a', workspaceId: 'b', sessionId: 'c',
+ * //       iceTimeoutMs: 10, onEvent: () => {},
+ * //     });
+ * //     await expect(c.start({} as any)).rejects.toMatchObject({
+ * //       name: 'WebRtcConnectError',
+ * //       reason: 'ice_timeout',
+ * //     });
+ * //   });
+ * // });
+ */
+export {};

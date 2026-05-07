@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Onboarding — Swfte ChatFlow Widget vanilla example</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #0f172a; }
+    h1 { margin-bottom: 8px; }
+    .frame { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 24px; }
+    .agent, .user { padding: 8px 12px; border-radius: 16px; margin: 6px 0; max-width: 80%; }
+    .agent { background: #f1f5f9; color: #0f172a; }
+    .user { background: #6366f1; color: #fff; margin-left: auto; }
+    progress { width: 100%; margin: 12px 0; height: 6px; }
+    input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 15px; }
+    a { color: #6366f1; }
+  </style>
+</head>
+<body>
+  <h1>Acme onboarding</h1>
+  <p>
+    Embedded with the official
+    <a href="https://www.swfte.com/products/chatflows">Swfte ChatFlows</a> widget — no build, no
+    framework, just a script tag.
+  </p>
+
+  <div class="frame" id="root"></div>
+
+  <script type="module">
+    import { ChatFlowClient } from 'https://cdn.jsdelivr.net/npm/@swfte/chatflow-widget/+esm';
+
+    const client = new ChatFlowClient({
+      baseUrl: 'https://api.swfte.com/agents',
+      chatFlowId: 'cf_yourchatflowid',
+      apiKey: 'sk-swfte-your-demo-key',
+      workspaceId: '226',
+      greeting: "Welcome to Acme! Let's set up your profile in 60 seconds.",
+      onComplete: (data) => alert('Done: ' + JSON.stringify(data, null, 2)),
+    });
+
+    const root = document.getElementById('root');
+
+    function render() {
+      const { messages, progressPercent } = client.state;
+      root.innerHTML = `
+        <progress value="${progressPercent}" max="100"></progress>
+        ${messages.map((m) => `<div class="${m.role}">${escapeHtml(m.content)}</div>`).join('')}
+        <input id="i" placeholder="Type your response..." autofocus />
+      `;
+      const input = document.getElementById('i');
+      input.focus();
+      input.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        await client.send(text);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    client.subscribe(render);
+    await client.start();
+  </script>
+</body>
+</html>

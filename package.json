@@ -1,0 +1,108 @@
+{
+  "name": "@swfte/chatflow-widget",
+  "version": "1.1.0",
+  "description": "Official Swfte ChatFlow widget — embeddable conversational forms for onboarding, lead capture, support triage, surveys and voice. React, Next.js, Vue, Svelte and vanilla.",
+  "license": "MIT",
+  "author": "Swfte <sdk@swfte.com>",
+  "homepage": "https://www.swfte.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SwfteAI/swfte-chatflow-widget.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SwfteAI/swfte-chatflow-widget/issues",
+    "email": "developers@swfte.com"
+  },
+  "keywords": [
+    "swfte",
+    "chatflow",
+    "chatflows",
+    "chatbot",
+    "conversational-forms",
+    "conversational-ui",
+    "onboarding",
+    "onboarding-widget",
+    "lead-capture",
+    "lead-qualification",
+    "survey",
+    "nps",
+    "support-triage",
+    "ai",
+    "ai-agent",
+    "agent",
+    "llm",
+    "openai",
+    "anthropic",
+    "gemini",
+    "voice",
+    "voice-agent",
+    "twilio",
+    "webrtc",
+    "react",
+    "react-component",
+    "nextjs",
+    "vue",
+    "svelte",
+    "widget",
+    "embeddable",
+    "form",
+    "form-builder",
+    "typescript"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./react": {
+      "import": "./react/index.mjs",
+      "require": "./react/index.js",
+      "types": "./react/index.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next/index.mjs",
+      "require": "./dist/next/index.js",
+      "types": "./dist/next/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "react",
+    "ABOUT.md",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@types/react": "^18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false
+}
