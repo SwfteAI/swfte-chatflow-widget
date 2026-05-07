@@ -13,8 +13,7 @@ export default function Page() {
 
       <ChatFlowProvider
         config={{
-          baseUrl: '/api/chatflow',
-          proxyUrl: '/api/chatflow',
+          endpoint: '/api/chatflow',
           apiKey: '',
           chatFlowId: process.env.NEXT_PUBLIC_CHATFLOW_ID!,
           greeting: 'Quick question — what brings you to Acme today?',

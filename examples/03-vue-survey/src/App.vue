@@ -3,7 +3,7 @@ import { ChatFlowClient } from '@swfte/chatflow-widget';
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const client = new ChatFlowClient({
-  baseUrl: 'https://api.swfte.com/agents',
+  endpoint: 'https://api.swfte.com/agents',
   chatFlowId: import.meta.env.VITE_CHATFLOW_ID,
   apiKey: import.meta.env.VITE_SWFTE_API_KEY,
   workspaceId: import.meta.env.VITE_SWFTE_WORKSPACE_ID,

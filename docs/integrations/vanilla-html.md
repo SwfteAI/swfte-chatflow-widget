@@ -16,7 +16,7 @@ Drop a ChatFlow on any static page in under twenty lines of HTML.
     import { ChatFlowClient } from 'https://cdn.jsdelivr.net/npm/@swfte/chatflow-widget/+esm';
 
     const client = new ChatFlowClient({
-      baseUrl: 'https://api.swfte.com/agents',
+      endpoint: 'https://api.swfte.com/agents',
       chatFlowId: 'cf_yourchatflowid',
       apiKey: 'sk-swfte-...', // For demos only — use a proxy in production
       workspaceId: '226',
@@ -50,6 +50,6 @@ Drop a ChatFlow on any static page in under twenty lines of HTML.
 </html>
 ```
 
-For production, deploy a thin server that holds the API key and proxy `baseUrl: '/api/chatflow'` through it. See [proxy-pattern.md](../proxy-pattern.md).
+For production, deploy a thin server that holds the API key and proxy `endpoint: '/api/chatflow'` through it. See [proxy-pattern.md](../proxy-pattern.md).
 
 Full reference at [swfte.com/developers](https://www.swfte.com/developers).
