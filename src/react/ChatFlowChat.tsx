@@ -2,11 +2,16 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useChatFlow } from './ChatFlowProvider';
 import type { ChatFlowTheme, ChatFlowMessage } from '../types';
 
+// Deep-required: every nested key resolved, since the merged theme always
+// has all values filled in by DEFAULT_THEME.
+type DeepRequired<T> = T extends object ? { [K in keyof T]-?: DeepRequired<T[K]> } : T;
+type ResolvedTheme = DeepRequired<ChatFlowTheme>;
+
 // ---------------------------------------------------------------------------
 // Default theme
 // ---------------------------------------------------------------------------
 
-const DEFAULT_THEME: Required<ChatFlowTheme> = {
+const DEFAULT_THEME: ResolvedTheme = {
   colors: {
     primary: '#3b82f6',
     background: '#ffffff',
@@ -40,7 +45,7 @@ const DEFAULT_THEME: Required<ChatFlowTheme> = {
   },
 };
 
-function mergeTheme(base: Required<ChatFlowTheme>, overrides?: ChatFlowTheme): Required<ChatFlowTheme> {
+function mergeTheme(base: ResolvedTheme, overrides?: ChatFlowTheme): ResolvedTheme {
   if (!overrides) return base;
   return {
     colors: { ...base.colors, ...overrides.colors },
@@ -59,7 +64,7 @@ function MessageBubble({
   theme,
 }: {
   msg: ChatFlowMessage;
-  theme: Required<ChatFlowTheme>;
+  theme: ResolvedTheme;
 }) {
   const isUser = msg.role === 'user';
 
@@ -94,7 +99,7 @@ function MessageBubble({
   );
 }
 
-function TypingIndicator({ theme }: { theme: Required<ChatFlowTheme> }) {
+function TypingIndicator({ theme }: { theme: ResolvedTheme }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
       <div
@@ -132,7 +137,7 @@ function ProgressBar({
   theme,
 }: {
   percent: number;
-  theme: Required<ChatFlowTheme>;
+  theme: ResolvedTheme;
 }) {
   if (percent <= 0) return null;
 

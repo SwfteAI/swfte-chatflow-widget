@@ -211,7 +211,8 @@ export class WebRtcVoiceClient {
       if (audioEl.srcObject !== ev.streams[0]) {
         audioEl.srcObject = ev.streams[0];
         audioEl.autoplay = true;
-        audioEl.playsInline = true;
+        // playsInline is iOS Safari-only and not in lib.dom's HTMLAudioElement.
+        audioEl.setAttribute('playsinline', 'true');
         audioEl.play().catch(() => {
           // Autoplay policy may block; caller should have triggered
           // start() in a user gesture scope (click handler). If blocked,
