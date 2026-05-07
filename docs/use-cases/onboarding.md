@@ -32,10 +32,9 @@ export default function OnboardingPage({ userId }: { userId: string }) {
   return (
     <ChatFlowProvider
       config={{
-        baseUrl: '/api/chatflow', // proxy
+        endpoint: '/api/chatflow', // proxy
         chatFlowId: process.env.NEXT_PUBLIC_ONBOARDING_ID!,
         apiKey: '',
-        proxyUrl: '/api/chatflow',
         sessionVariables: { userId }, // injected into prompts and tools
         greeting: "Welcome to Acme! Let's set up your profile in 60 seconds.",
         onComplete: async (data) => {

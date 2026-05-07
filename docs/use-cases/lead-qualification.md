@@ -27,10 +27,9 @@ Score and route inbound leads with a ChatFlow that asks the right questions, ran
 ```tsx
 <ChatFlowProvider
   config={{
-    baseUrl: '/api/chatflow',
+    endpoint: '/api/chatflow',
     chatFlowId: process.env.NEXT_PUBLIC_LEAD_QUAL_ID!,
     apiKey: '',
-    proxyUrl: '/api/chatflow',
     greeting: 'Quick question — what brings you to Acme today?',
     onComplete: async (data) => {
       const score = scoreLead(data); // your scoring fn

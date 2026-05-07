@@ -14,10 +14,9 @@
 
   onMount(async () => {
     client = new ChatFlowClient({
-      baseUrl: '/api/chatflow',
+      endpoint: '/api/chatflow',
       chatFlowId: import.meta.env.VITE_CHATFLOW_ID,
       apiKey: '',
-      proxyUrl: '/api/chatflow',
     });
     unsubscribe = client.subscribe(() => {
       messages = [...client.state.messages];

@@ -4,10 +4,9 @@
 
 | Key | Type | Required | Notes |
 |---|---|---|---|
-| `baseUrl` | `string` | yes | Backend base — e.g. `https://api.swfte.com/agents` or your proxy path. |
+| `endpoint` | `string` | yes | Backend base URL — e.g. `https://api.swfte.com/agents` or, when using a server-side proxy, your local proxy path (e.g. `/api/chatflow`). |
 | `chatFlowId` | `string` | yes | Swfte ChatFlow ID (`cf_…`). |
-| `apiKey` | `string` | yes (or empty if `proxyUrl` is set) | Your `sk-swfte-…` key. **Never** ship this to a browser unless you know what you're doing — use a [proxy](./proxy-pattern.md). |
-| `proxyUrl` | `string` | no | If set, the widget routes all requests through this URL and skips Authorization headers — your proxy injects them. |
+| `apiKey` | `string` | yes (or empty when `endpoint` points at a proxy that injects auth) | Your `sk-swfte-…` key. **Never** ship this to a browser unless you know what you're doing — use the [proxy pattern](./proxy-pattern.md). |
 | `workspaceId` | `string` | no | Workspace ID for scoping. |
 | `sessionId` | `string` | no | Resume a prior session. |
 | `sessionVariables` | `Record<string,unknown>` | no | Server-side variables injected into the prompt and tools. |
@@ -49,7 +48,7 @@ Returns:
 
 ```ts
 const client = new ChatFlowClient({
-  baseUrl, chatFlowId, apiKey, workspaceId, sessionId,
+  endpoint, chatFlowId, apiKey, workspaceId, sessionId,
   sessionVariables, greeting,
   onComplete, onFieldExtracted, onMessage, onError,
 });
