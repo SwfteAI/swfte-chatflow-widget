@@ -1,0 +1,67 @@
+name: Release
+
+# Tag-based releases require manual approval before any publish runs.
+# The publish job is gated by a GitHub Environment named `npm-publish-prod`
+# with required reviewers (configured under Settings → Environments).
+# Without that approval, the job pauses indefinitely and nothing reaches npm.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PUBLISH to confirm an intentional release'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm intentional manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "PUBLISH" ]; then
+            echo "::error::Manual run requires confirm=PUBLISH"
+            exit 1
+          fi
+      - run: echo "Release guard passed for ${GITHUB_REF}"
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: guard
+    environment:
+      name: npm-publish-prod
+      url: https://www.npmjs.com/package/@swfte/chatflow-widget
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
