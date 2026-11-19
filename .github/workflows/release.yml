@@ -45,14 +45,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'yarn'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: npm ci
+        run: test -f yarn.lock && yarn install --frozen-lockfile
 
-      - name: Build
-        run: npm run build
+      - name: Build and test release artifact
+        run: yarn test
 
       - name: Publish to npm
         run: npm publish --access public

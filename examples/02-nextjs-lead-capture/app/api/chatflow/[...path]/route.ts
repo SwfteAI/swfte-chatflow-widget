@@ -15,6 +15,8 @@ export const { GET, POST } = createChatFlowHandler({
   chatFlowId: process.env.NEXT_PUBLIC_CHATFLOW_ID!,
   workspaceId: process.env.SWFTE_WORKSPACE_ID,
   channel: 'WEB_CHAT',
+  // Supply getUserId and sessionOwnership from your host before enabling
+  // this route. See docs/integrations/nextjs.md for the callback contracts.
 });
 
 export const dynamic = 'force-dynamic';

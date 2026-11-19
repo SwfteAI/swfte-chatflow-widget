@@ -4,9 +4,7 @@
 
 ## Install
 
-```bash
-npm install @swfte/chatflow-widget react react-dom
-```
+Follow the [source installation instructions](../../README.md#installation).
 
 ## ChatFlowProvider + ChatFlowChat
 

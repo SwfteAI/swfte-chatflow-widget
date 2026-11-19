@@ -7,6 +7,8 @@ export type { WarmupRequest, WarmupStatus, PollUntilReadyOptions } from './core/
 export type {
   ChatFlowConfig,
   ChatFlowServerConfig,
+  ChatFlowSessionOwnership,
+  ChatFlowPrewarmDecision,
   ChatFlowState,
   ChatFlowMessage,
   ChatFlowError,
@@ -35,4 +37,4 @@ export type {
   PollerOptions,
 } from './voice/VoiceReadinessPoller';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.2.0';

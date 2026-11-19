@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run build
+          cache: 'yarn'
+      - run: test -f yarn.lock && yarn install --frozen-lockfile
+      - run: yarn typecheck
+      - run: yarn test
