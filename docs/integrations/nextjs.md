@@ -1,36 +1,11 @@
 # Next.js Integration
 
-The widget runs in the browser and needs an API key. In Next.js, the safest pattern is a thin App Router proxy that holds the key server-side.
+Configure the App Router handler with your host’s verified user identity and durable session ownership. Use the [route example in the README](../../README.md#quick-start).
 
-## App Router proxy + client widget
-
-`app/api/chatflow/[...path]/route.ts`:
-
-```ts
-const SWFTE_BASE = 'https://api.swfte.com/agents';
-const KEY = process.env.SWFTE_API_KEY!;
-
-async function forward(req: Request, params: { path: string[] }) {
-  const url = `${SWFTE_BASE}/${params.path.join('/')}${new URL(req.url).search}`;
-  const init: RequestInit = {
-    method: req.method,
-    headers: {
-      'Authorization': `Bearer ${KEY}`,
-      'X-API-Key': KEY,
-      'X-Workspace-ID': process.env.SWFTE_WORKSPACE_ID ?? '',
-      'Content-Type': req.headers.get('content-type') ?? 'application/json',
-    },
-    body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text(),
-  };
-  return fetch(url, init);
-}
-
-export const GET = (req: Request, { params }: any) => forward(req, params);
-export const POST = (req: Request, { params }: any) => forward(req, params);
-export const PUT = (req: Request, { params }: any) => forward(req, params);
-export const PATCH = (req: Request, { params }: any) => forward(req, params);
-export const DELETE = (req: Request, { params }: any) => forward(req, params);
-```
+- Resolve the caller from the authenticated host session, with the host’s CSRF checks for POST requests. Use a user ID that distinguishes accounts across tenants. Return `null` if the request is unauthenticated.
+- Store bindings in a shared database scoped to the workspace and ChatFlow. Use a unique key on the scope and session ID. Implement `bind` with an insert-if-absent operation and return whether it inserted a row. Keep bindings for the duration of resumability. Backfill existing sessions only from trusted records of their owners before upgrading.
+- To enable prewarm, set `authorizePrewarm(request, userId)`. Return `forbidden` for callers without prewarm permission, `rate_limited` when a shared quota is exhausted, and `allowed` only after both the permission check and atomic quota consumption succeed. Apply limits per user and workspace.
+- Keep `SWFTE_API_KEY` in server-only configuration. The browser points to the same-origin route.
 
 `app/onboarding/page.tsx`:
 
@@ -43,10 +18,7 @@ export default function OnboardingPage() {
     <ChatFlowProvider
       config={{
         endpoint: '/api/chatflow',
-        chatFlowId: process.env.NEXT_PUBLIC_CHATFLOW_ID!,
-        apiKey: '',
         greeting: "Hey! Let's get you set up.",
-        onComplete: (data) => fetch('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
       }}
     >
       <ChatFlowChat agentName="Onboarding" />
@@ -60,13 +32,13 @@ export default function OnboardingPage() {
 ```
 SWFTE_API_KEY=sk-swfte-...
 SWFTE_WORKSPACE_ID=226
-NEXT_PUBLIC_CHATFLOW_ID=cf_yourchatflowid
+SWFTE_CHATFLOW_ID=cf_yourchatflowid
 ```
 
 Manage these via `vercel env pull` if deploying on Vercel.
 
 ## Caching / streaming
 
-The proxy intentionally has no Next.js cache — each ChatFlow turn is unique. Add `export const dynamic = 'force-dynamic'` to the proxy if you suspect Next.js is caching too aggressively.
+The handler marks proxied responses private and sends upstream requests with caching disabled.
 
 Full reference at [swfte.com/developers](https://www.swfte.com/developers).

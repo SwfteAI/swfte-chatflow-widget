@@ -4,13 +4,7 @@
 
 ## Install
 
-```bash
-npm install @swfte/chatflow-widget
-# or
-yarn add @swfte/chatflow-widget
-# or
-pnpm add @swfte/chatflow-widget
-```
+Follow the [installation instructions](../README.md#installation).
 
 ## Pre-requisites
 
@@ -29,12 +23,8 @@ export function Onboarding() {
   return (
     <ChatFlowProvider
       config={{
-        endpoint: 'https://api.swfte.com/agents',
-        chatFlowId: 'cf_xxxxxxxxxxxxxxxxxxx',
-        apiKey: process.env.NEXT_PUBLIC_SWFTE_API_KEY,
-        workspaceId: '226',
+        endpoint: '/api/chatflow',
         greeting: "Hi! Let's set up your account.",
-        onComplete: (data) => console.log('Collected:', data),
       }}
     >
       <ChatFlowChat agentName="Onboarding" />
@@ -43,7 +33,7 @@ export function Onboarding() {
 }
 ```
 
-> ⚠️ Don't expose your API key in the browser. Use the [proxy pattern](./proxy-pattern.md) for any production deployment.
+Set up the [authenticated Next.js route](./integrations/nextjs.md) or implement the [proxy contract](./proxy-pattern.md) before mounting the widget.
 
 ## Framework guides
 

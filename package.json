@@ -1,6 +1,6 @@
 {
   "name": "@swfte/chatflow-widget",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Official Swfte ChatFlow widget — embeddable conversational forms for onboarding, lead capture, support triage, surveys and voice. React, Next.js, Vue, Svelte and vanilla.",
   "license": "MIT",
   "author": "Swfte <sdk@swfte.com>",
@@ -80,6 +80,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "test": "yarn build && node --test tests/*.test.cjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },

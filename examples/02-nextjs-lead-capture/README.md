@@ -4,8 +4,10 @@ Demonstrates the recommended **proxy pattern** — the API key lives in `SWFTE_A
 
 ## Run
 
+Build the package tarball using the [source installation instructions](../../README.md#installation). Wire your host’s verified identity and shared session ownership store into the route before running the example. The session routes deny requests without those callbacks. [Next.js integration](../../docs/integrations/nextjs.md)
+
 ```bash
-npm install
+npm install /absolute/path/to/swfte-chatflow-widget-1.2.0.tgz
 cp .env.example .env.local
 # fill SWFTE_API_KEY, SWFTE_WORKSPACE_ID, NEXT_PUBLIC_CHATFLOW_ID
 npm run dev

@@ -36,16 +36,9 @@ function flattenCollectedData(raw: Record<string, unknown>): Record<string, unkn
 /**
  * Creates Next.js App Router GET & POST handlers for ChatFlow.
  *
- * Mount at `app/api/chatflow/[...path]/route.ts`:
- * ```ts
- * import { createChatFlowHandler } from '@swfte/chatflow-widget/next';
- *
- * export const { GET, POST } = createChatFlowHandler({
- *   apiKey: process.env.SWFTE_API_KEY!,
- *   chatFlowId: process.env.SWFTE_ONBOARDING_CHATFLOW_ID!,
- *   workspaceId: process.env.SWFTE_WORKSPACE_ID,
- * });
- * ```
+ * Mount at `app/api/chatflow/[...path]/route.ts` with the host's verified user
+ * identity and session ownership store. Configure a separate prewarm policy
+ * only when the host allows GPU prewarm.
  *
  * The handler exposes these sub-routes:
  * - `POST /start`           — create a new ChatFlow session
@@ -57,6 +50,31 @@ function flattenCollectedData(raw: Record<string, unknown>): Record<string, unkn
 export function createChatFlowHandler(config: ChatFlowServerConfig) {
   const base = swfteBase(config);
   const headers = swfteHeaders(config);
+  const upstream = (url: string, init?: RequestInit) =>
+    fetch(url, { ...init, headers, redirect: 'error', cache: 'no-store' });
+
+  async function requireUser(request: Request): Promise<string | Response> {
+    try {
+      const userId = await config.getUserId?.(request);
+      return typeof userId === 'string' && userId.trim()
+        ? userId
+        : jsonResponse({ error: 'Authentication required' }, 401);
+    } catch {
+      return jsonResponse({ error: 'Authentication unavailable' }, 503);
+    }
+  }
+
+  async function requireOwner(sessionId: string, userId: string): Promise<Response | undefined> {
+    try {
+      if (config.sessionOwnership) {
+        if (await config.sessionOwnership.getOwner(sessionId) === userId) return undefined;
+        return jsonResponse({ error: 'Session not found' }, 404);
+      }
+    } catch {
+      // An unavailable ownership store must never allow access.
+    }
+    return jsonResponse({ error: 'Session ownership unavailable' }, 503);
+  }
 
   async function resolveParams(ctx: { params: Promise<{ path?: string[] }> }): Promise<string[]> {
     const resolved = await ctx.params;
@@ -68,14 +86,21 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
   async function POST(req: Request, ctx: { params: Promise<{ path?: string[] }> }) {
     const path = await resolveParams(ctx);
     const action = path[0];
+    if (!['start', 'input', 'prewarm'].includes(action)) {
+      return jsonResponse({ error: 'Unknown action' }, 404);
+    }
+
+    const userId = await requireUser(req);
+    if (typeof userId !== 'string') return userId;
 
     // POST /start — create session
     if (action === 'start') {
-      const body = (await req.json()) as { prefilledData?: Record<string, unknown> } | null;
+      const ownership = config.sessionOwnership;
+      if (!ownership) return jsonResponse({ error: 'Session ownership unavailable' }, 503);
+      const body = (await req.json().catch(() => null)) as { prefilledData?: Record<string, unknown> } | null;
 
-      const res = await fetch(`${base}/v2/chatflows/${config.chatFlowId}/sessions`, {
+      const res = await upstream(`${base}/v2/chatflows/${encodeURIComponent(config.chatFlowId)}/sessions`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           channel: config.channel ?? 'WEB_CHAT',
           language: config.language ?? 'en-US',
@@ -84,21 +109,28 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
       });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        return jsonResponse({ error: `Failed to create session: ${errText}` }, res.status);
+        return jsonResponse({ error: 'Failed to create session' }, res.status);
       }
 
       const session = await res.json();
       const sessionId = session.sessionId || session.id;
+      if (!isSessionId(sessionId)) return jsonResponse({ error: 'Invalid upstream session' }, 502);
+
+      try {
+        if (await ownership.bind(sessionId, userId) !== true) {
+          return jsonResponse({ error: 'Failed to bind session' }, 502);
+        }
+      } catch {
+        return jsonResponse({ error: 'Session ownership unavailable' }, 503);
+      }
 
       // Send SESSION_START to get the engine's opening greeting aligned with the
       // first field. This avoids the client showing a greeting that's out of sync
       // with the engine's state.
       let greeting = '';
       try {
-        const startRes = await fetch(`${base}/v2/chatflows/sessions/${sessionId}/input`, {
+        const startRes = await upstream(`${base}/v2/chatflows/sessions/${sessionId}/input`, {
           method: 'POST',
-          headers,
           body: JSON.stringify({ input: '', inputType: 'SESSION_START' }),
         });
         if (startRes.ok) {
@@ -114,24 +146,24 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
 
     // POST /input — send message
     if (action === 'input') {
-      const body = (await req.json()) as { sessionId?: string; input?: string } | null;
+      const body = (await req.json().catch(() => null)) as { sessionId?: unknown; input?: unknown } | null;
       const sessionId = body?.sessionId;
-      const input = body?.input?.trim();
+      const input = typeof body?.input === 'string' ? body.input.trim() : '';
 
-      if (!sessionId || !input) {
+      if (!isSessionId(sessionId) || !input) {
         return jsonResponse({ error: 'sessionId and input are required' }, 400);
       }
 
-      // Send to ChatFlow
-      const inputRes = await fetch(`${base}/v2/chatflows/sessions/${sessionId}/input`, {
+      const denied = await requireOwner(sessionId, userId);
+      if (denied) return denied;
+
+      const inputRes = await upstream(`${base}/v2/chatflows/sessions/${sessionId}/input`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({ input, inputType: 'TEXT' }),
       });
 
       if (!inputRes.ok) {
-        const errText = await inputRes.text().catch(() => '');
-        return jsonResponse({ error: `Input failed: ${errText}` }, inputRes.status >= 500 ? 502 : inputRes.status);
+        return jsonResponse({ error: 'Input failed' }, inputRes.status >= 500 ? 502 : inputRes.status);
       }
 
       const result = await inputRes.json();
@@ -139,7 +171,7 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
       // Fetch session state for collected data (per-turn extractedData is often empty)
       let collectedData: Record<string, unknown> = {};
       try {
-        const stateRes = await fetch(`${base}/v2/chatflows/sessions/${sessionId}`, { headers });
+        const stateRes = await upstream(`${base}/v2/chatflows/sessions/${sessionId}`);
         if (stateRes.ok) {
           const session = await stateRes.json();
           if (session.collectedData) {
@@ -159,42 +191,35 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
       });
     }
 
-    // POST /prewarm — fire-and-forget GPU scale-up. Relayed to agents-service
-    // /v2/voice/prewarm/{workspaceId} which scales up BOTH the Gemma and
-    // VoiceUtilities ASGs in parallel. Widget fires this on mount so by the
-    // time the user clicks "Start" the GPUs have had ~10-30s of head-start
-    // on the ~5 min cold-boot from baked AMIs.
-    if (action === 'prewarm') {
-      const ws = config.workspaceId;
-      if (!ws) {
-        // Nothing to prewarm when no workspace is configured — no-op success
-        // so the widget's mount flow doesn't log errors in dev setups.
-        return jsonResponse({ prewarmed: false, reason: 'no-workspace-id' });
-      }
-      // Don't await — widget shouldn't wait on scale-up.
-      try {
-        const ctrl = new AbortController();
-        const timeoutId = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(`${base}/v2/voice/prewarm/${encodeURIComponent(ws)}`, {
-          method: 'POST',
-          headers,
-          signal: ctrl.signal,
-        });
-        clearTimeout(timeoutId);
-        const body = res.ok ? await res.json().catch(() => ({})) : null;
-        return jsonResponse({ prewarmed: res.ok, status: res.status, detail: body });
-      } catch (e) {
-        // Never surface a prewarm failure to the UX — just log it.
-        return jsonResponse({ prewarmed: false, error: String(e) });
-      }
+    // POST /prewarm — the host may spend capacity only after a separate policy check.
+    let decision;
+    try {
+      decision = await config.authorizePrewarm?.(req, userId);
+    } catch {
+      return jsonResponse({ error: 'Prewarm authorization unavailable' }, 503);
     }
+    if (decision === 'rate_limited') {
+      return jsonResponse({ error: 'Prewarm rate limit exceeded' }, 429);
+    }
+    if (decision !== 'allowed') return jsonResponse({ error: 'Prewarm forbidden' }, 403);
 
-    return jsonResponse({ error: 'Unknown action' }, 404);
+    const ws = config.workspaceId;
+    if (!ws) return jsonResponse({ prewarmed: false, reason: 'no-workspace-id' });
+    try {
+      const res = await upstream(`${base}/v2/voice/prewarm/${encodeURIComponent(ws)}`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000),
+      });
+      const body = res.ok ? await res.json().catch(() => ({})) : null;
+      return jsonResponse({ prewarmed: res.ok, status: res.status, detail: body });
+    } catch {
+      return jsonResponse({ prewarmed: false, error: 'Prewarm request failed' });
+    }
   }
 
   // ── GET handler ─────────────────────────────────────────────────────
 
-  async function GET(_req: unknown, ctx: { params: Promise<{ path?: string[] }> }) {
+  async function GET(req: Request, ctx: { params: Promise<{ path?: string[] }> }) {
     const path = await resolveParams(ctx);
 
     // GET /config — public config the browser provider needs at mount.
@@ -212,6 +237,13 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
       });
     }
 
+    if (path[0] !== 'readiness' && !(path[0] === 'session' && isSessionId(path[1]))) {
+      return jsonResponse({ error: 'Not found' }, 404);
+    }
+
+    const userId = await requireUser(req);
+    if (typeof userId !== 'string') return userId;
+
     // GET /readiness — proxy to agents-service /v2/gpu/readiness so the
     // browser-side VoiceReadinessPoller can poll without exposing the
     // upstream URL or apiKey. Aggregates across all configured GPU stacks
@@ -223,10 +255,7 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
         ? `${base}/v2/gpu/readiness?workspace=${encodeURIComponent(ws)}`
         : `${base}/v2/gpu/readiness`;
       try {
-        const ctrl = new AbortController();
-        const timeoutId = setTimeout(() => ctrl.abort(), 3000);
-        const res = await fetch(url, { headers, signal: ctrl.signal });
-        clearTimeout(timeoutId);
+        const res = await upstream(url, { signal: AbortSignal.timeout(3000) });
         if (!res.ok) {
           // Treat upstream failure as "not ready, keep polling" rather than
           // bubbling 5xx — the poller's retry loop handles transient errors.
@@ -236,10 +265,10 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
           });
         }
         return jsonResponse(await res.json());
-      } catch (e) {
+      } catch {
         return jsonResponse({
           ready: false, etaSeconds: 60, mode: 'COLD',
-          fallbackActive: false, reason: String(e), targets: [],
+          fallbackActive: false, reason: 'upstream-unavailable', targets: [],
         });
       }
     }
@@ -247,7 +276,10 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
     // GET /session/:id — get session state
     if (path[0] === 'session' && path[1]) {
       const sessionId = path[1];
-      const res = await fetch(`${base}/v2/chatflows/sessions/${sessionId}`, { headers });
+      const denied = await requireOwner(sessionId, userId);
+      if (denied) return denied;
+
+      const res = await upstream(`${base}/v2/chatflows/sessions/${sessionId}`);
 
       if (!res.ok) {
         return jsonResponse({ error: 'Session not found' }, res.status);
@@ -278,9 +310,13 @@ export function createChatFlowHandler(config: ChatFlowServerConfig) {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function isSessionId(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-zA-Z0-9_-]+$/.test(value);
+}
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
   });
 }

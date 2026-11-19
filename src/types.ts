@@ -54,6 +54,15 @@ export type VoiceRuntimeVersion = 'V1' | 'V2';
  * Server-side config — used by createChatFlowHandler on the server.
  * Contains secrets that never reach the browser.
  */
+/** Host-owned session bindings. Use a shared store scoped to this workspace and ChatFlow. */
+export interface ChatFlowSessionOwnership {
+  getOwner(sessionId: string): string | null | undefined | Promise<string | null | undefined>;
+  /** Atomically claim an unbound session. Return false for any existing binding. */
+  bind(sessionId: string, userId: string): boolean | Promise<boolean>;
+}
+
+export type ChatFlowPrewarmDecision = 'allowed' | 'forbidden' | 'rate_limited';
+
 export interface ChatFlowServerConfig {
   /** Swfte API base URL (agents-service, not gateway) */
   baseUrl?: string;
@@ -63,6 +72,12 @@ export interface ChatFlowServerConfig {
   workspaceId?: string;
   /** ChatFlow ID */
   chatFlowId: string;
+  /** Resolve a verified, stable caller ID. Required for credentialed routes. */
+  getUserId?: (request: Request) => string | null | undefined | Promise<string | null | undefined>;
+  /** Required for session creation, reads and input. */
+  sessionOwnership?: ChatFlowSessionOwnership;
+  /** Independently authorize and consume the host's rate limit for GPU prewarm. Defaults to denied. */
+  authorizePrewarm?: (request: Request, userId: string) => ChatFlowPrewarmDecision | Promise<ChatFlowPrewarmDecision>;
   /** Channel type (default: 'WEB_CHAT') */
   channel?: ChannelType;
   /** Language (default: 'en-US') */

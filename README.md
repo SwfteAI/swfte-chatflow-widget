@@ -1,10 +1,6 @@
 # @swfte/chatflow-widget
 
-[![npm](https://img.shields.io/npm/v/@swfte/chatflow-widget.svg)](https://www.npmjs.com/package/@swfte/chatflow-widget)
-[![npm downloads](https://img.shields.io/npm/dm/@swfte/chatflow-widget.svg)](https://www.npmjs.com/package/@swfte/chatflow-widget)
-[![license](https://img.shields.io/npm/l/@swfte/chatflow-widget.svg)](LICENSE)
-[![types](https://img.shields.io/npm/types/@swfte/chatflow-widget.svg)](https://www.npmjs.com/package/@swfte/chatflow-widget)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/@swfte/chatflow-widget.svg?label=minzip)](https://bundlephobia.com/package/@swfte/chatflow-widget)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![github](https://img.shields.io/github/stars/SwfteAI/swfte-chatflow-widget?style=social)](https://github.com/SwfteAI/swfte-chatflow-widget)
 
 > The official, embeddable conversational form widget for [Swfte ChatFlows](https://www.swfte.com/products/chatflows). Drop-in onboarding, lead capture, support triage, surveys and voice — for React, Next.js, Vue, Svelte and plain HTML, in a single dependency.
@@ -56,9 +52,9 @@ Read the full company profile in [ABOUT.md](ABOUT.md), or visit [swfte.com](http
 
 - [swfte-python](https://github.com/SwfteAI/swfte-python) — Python SDK ([PyPI](https://pypi.org/project/swfte/))
 - [swfte-node](https://github.com/SwfteAI/swfte-node) — Node.js / TypeScript SDK ([npm](https://www.npmjs.com/package/@swfte/sdk))
-- [swfte-java](https://github.com/SwfteAI/swfte-java) — Java SDK ([Maven Central](https://search.maven.org/artifact/com.swfte/swfte-sdk))
-- [swfte-chat-widget](https://github.com/SwfteAI/swfte-chat-widget) — embeddable chat widget ([npm](https://www.npmjs.com/package/@swfte/chat-widget))
-- [swfte-chatflow-widget](https://github.com/SwfteAI/swfte-chatflow-widget) — embeddable conversational form widget ([npm](https://www.npmjs.com/package/@swfte/chatflow-widget))
+- [swfte-java](https://github.com/SwfteAI/swfte-java) — Java SDK (source install)
+- [swfte-chat-widget](https://github.com/SwfteAI/swfte-chat-widget) — embeddable chat widget (source install)
+- [swfte-chatflow-widget](https://github.com/SwfteAI/swfte-chatflow-widget) — embeddable conversational form widget (this repository)
 
 ---
 
@@ -82,7 +78,7 @@ This widget renders a ChatFlow defined in your [Swfte](https://www.swfte.com) wo
 - **Drop-in React component** — `<ChatFlowChat />` renders a fully-themed, accessible chat surface in one line.
 - **Headless hooks** — `useChatFlow()` exposes state and actions if you want to build your own UI.
 - **Framework-agnostic core** — `ChatFlowClient` works in vanilla JS, Vue, Svelte, Solid, web components — anything.
-- **Next.js App Router handler** — `createChatFlowHandler()` keeps your API key server-side with a single import.
+- **Next.js App Router handler** — `createChatFlowHandler()` keeps your API key server-side and enforces the host’s session ownership.
 - **Voice-ready** — built-in WebRTC and WebSocket voice clients with cold-start readiness UX baked in.
 - **Themeable** — every color, radius, font and spacing exposed as a typed theme object or CSS variable.
 - **Stable browser identity** — emits a persisted `browserId` so server-side voiceprint matching works across sessions.
@@ -94,26 +90,23 @@ This widget renders a ChatFlow defined in your [Swfte](https://www.swfte.com) wo
 
 ## Installation
 
+`@swfte/chatflow-widget` is not yet published on public npm. Install from [the source repository](https://github.com/SwfteAI/swfte-chatflow-widget) with repository access, Node.js 18 or newer, and Yarn Classic.
+
 ```bash
-# npm
-npm install @swfte/chatflow-widget
-
-# yarn
-yarn add @swfte/chatflow-widget
-
-# pnpm
-pnpm add @swfte/chatflow-widget
+git clone https://github.com/SwfteAI/swfte-chatflow-widget.git
+cd swfte-chatflow-widget
+yarn install --frozen-lockfile
+yarn build
+npm pack
 ```
 
-React and React DOM are optional peer dependencies — only required if you import from `@swfte/chatflow-widget/react` or `@swfte/chatflow-widget/next`.
-
----
+In your application, run `npm install /absolute/path/to/swfte-chatflow-widget/swfte-chatflow-widget-1.2.0.tgz react react-dom`. Use the filename printed by `npm pack` if building a different revision.
 
 ## Quick start
 
 ### React
 
-The widget talks to a small **proxy endpoint** in your own backend that holds the [Swfte](https://www.swfte.com) API key. On Next.js you get this proxy with a one-liner; for everything else, use the [proxy pattern](docs/proxy-pattern.md).
+The widget talks to a small **proxy endpoint** in your own backend that holds the [Swfte](https://www.swfte.com) API key. Use the Next.js handler with your host’s authentication and ownership store. See the [proxy pattern](docs/proxy-pattern.md) for other stacks.
 
 ```tsx
 import { ChatFlowProvider, ChatFlowChat } from '@swfte/chatflow-widget/react';
@@ -124,7 +117,6 @@ function OnboardingChat() {
       config={{
         endpoint: '/api/chatflow',
         greeting: "Hey! I'm Zara from Workzil. Ready to set up your profile?",
-        onComplete: (data) => console.log('Collected:', data),
       }}
     >
       <ChatFlowChat
@@ -141,15 +133,18 @@ On Next.js (App Router), expose the proxy in `app/api/chatflow/[...path]/route.t
 
 ```ts
 import { createChatFlowHandler } from '@swfte/chatflow-widget/next';
+import { getVerifiedUserId, chatFlowOwnership } from '@/server/chatflow-access';
 
 export const { GET, POST } = createChatFlowHandler({
   apiKey: process.env.SWFTE_API_KEY!,
   chatFlowId: process.env.SWFTE_CHATFLOW_ID!,
-  workspaceId: process.env.SWFTE_WORKSPACE_ID!,
+  workspaceId: process.env.SWFTE_WORKSPACE_ID,
+  getUserId: getVerifiedUserId,
+  sessionOwnership: chatFlowOwnership,
 });
 ```
 
-That's it. The browser bundle never sees your API key. See [`docs/integrations/nextjs.md`](docs/integrations/nextjs.md) for the full walkthrough.
+Implement `getVerifiedUserId(request)` with your app’s existing server-side authentication. Have it return a stable user ID or `null`. Back `chatFlowOwnership` with a shared store scoped to the workspace and ChatFlow. Its `bind(sessionId, userId)` must atomically insert a new binding and return `false` if one already exists. Its `getOwner(sessionId)` returns that binding’s user ID. GPU prewarm is disabled by default. [Next.js integration](docs/integrations/nextjs.md)
 
 ### Custom UI with hooks
 
@@ -245,6 +240,9 @@ Two configs to know: **client config** (for `ChatFlowProvider` / `ChatFlowClient
 | `apiKey` | `string` | **required** | Swfte API key. Keep on the server. |
 | `chatFlowId` | `string` | **required** | The deployed ChatFlow id. |
 | `workspaceId` | `string` | — | Workspace scoping. |
+| `getUserId` | `(request) => userId or null` | required for private routes | Resolve a verified host caller. |
+| `sessionOwnership` | `{ getOwner, bind }` | required for session routes | Persist immutable session ownership in a shared store. |
+| `authorizePrewarm` | `(request, userId) => decision` | denied | Authorize prewarm and consume the host’s rate limit. |
 | `baseUrl` | `string` | `https://api.swfte.com/agents` | Override for self-hosted Swfte. |
 | `channel` | `'WEB_CHAT' \| 'VOICE' \| 'SMS' \| 'API'` | `'WEB_CHAT'` | Channel for the session. |
 | `language` | `string` | `'en-US'` | BCP-47 language tag. |
@@ -378,7 +376,7 @@ The provider polls `GET {endpoint}/v2/gpu/readiness` during the cold-start windo
 - `GET  /session/:id` — read state
 - `GET  /config` — public runtime config
 
-On Next.js, `createChatFlowHandler` builds this proxy for you. On any other stack, [`docs/proxy-pattern.md`](docs/proxy-pattern.md) shows the request/response shapes — it's a 40-line implementation in any language.
+On Next.js, `createChatFlowHandler` checks caller identity and binds sessions to their owners. See the [proxy pattern](docs/proxy-pattern.md) for other stacks.
 
 Other recommendations:
 
@@ -465,8 +463,8 @@ Cookbooks for common use-cases live in [`docs/`](docs/):
 
 - [swfte-python](https://github.com/SwfteAI/swfte-python) — Python SDK ([PyPI](https://pypi.org/project/swfte/))
 - [swfte-node](https://github.com/SwfteAI/swfte-node) — Node.js / TypeScript SDK ([npm](https://www.npmjs.com/package/@swfte/sdk))
-- [swfte-java](https://github.com/SwfteAI/swfte-java) — Java SDK ([Maven Central](https://search.maven.org/artifact/com.swfte/swfte-sdk))
-- [swfte-chat-widget](https://github.com/SwfteAI/swfte-chat-widget) — embeddable chat widget ([npm](https://www.npmjs.com/package/@swfte/chat-widget))
+- [swfte-java](https://github.com/SwfteAI/swfte-java) — Java SDK (source install)
+- [swfte-chat-widget](https://github.com/SwfteAI/swfte-chat-widget) — embeddable chat widget (source install)
 
 ---
 
